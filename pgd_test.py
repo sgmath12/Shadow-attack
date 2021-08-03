@@ -96,9 +96,9 @@ def test():
             X_adv.requires_grad_()
             X_adv = X_adv.to(device)
            
-            with torch.enable_grad():
-                preds_adv = net(X_adv)
-                loss = criterion(preds_adv,targets)
+            # with torch.enable_grad():
+            preds_adv = net(X_adv)
+            loss = criterion(preds_adv,targets)
                 # loss = softXEnt(preds_adv,targets)
 
             grad = torch.autograd.grad(loss, [X_adv])[0]
@@ -107,23 +107,16 @@ def test():
             X_adv = torch.min(torch.max(X_adv, inputs - eps), inputs + eps)
             X_adv = torch.clamp(X_adv, 0, 1)
 
-
         preds_adv = net(X_adv)
         
         delta = torch.randn_like(X_adv,device = 'cuda',requires_grad= True)*noise_sd
-        my_adv = inputs.detach()
-        my_adv = my_adv + torch.zeros_like(my_adv).uniform_(-eps, eps)
-
-
-
         # Shadow attack
-        for k in range(steps):
+        for i in range(steps):
             
             preds = net(inputs + delta)
             distance = distance_loss(preds, preds_adv)
-            loss = criterion(preds,targets) - 0.1*color_reg(delta) - 0.1*get_sim(delta) - 0.025 * tv_loss(delta) + 0.00 * distance_loss(preds, preds_adv)
+            loss = criterion(preds,targets) - 0.1*color_reg(delta) - 0.1*get_sim(delta) - 0.005 * tv_loss(delta) + 0.00 * distance_loss(preds, preds_adv)
             grad = torch.autograd.grad(loss, [delta])[0]
-            
             delta = delta + alpha * torch.sign(grad)
 
 
@@ -149,6 +142,7 @@ def test():
             print('Current adversarial test accuracy:', str(predicted.eq(targets).sum().item() / targets.size(0)))
             print('Current my_adversarial test accuracy:', str(my_predicted.eq(targets).sum().item() / targets.size(0)))
             print('Current adversarial test loss:', loss.item())
+            print ('=' * 15)
 
     print('\nTotal benign test accuarcy:', 100. * benign_correct / total)
     print('Total adversarial test Accuarcy:', 100. * adv_correct / total)
